@@ -12,7 +12,7 @@ class WBToken(models.Model):
     )
 
     token = models.CharField(
-        max_length=255,
+        max_length=500,
         verbose_name="WB токен"
     )
 
