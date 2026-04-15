@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16  # ❗ версия PostgreSQL (меняешь при апгрейде БД)
+
+    restart: always
+
+    # 📦 Переменные окружения
+    # 👉 значения лежат в .env
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}        # 👉 имя БД (меняется в .env)
+      POSTGRES_USER: ${DB_USER}      # 👉 пользователь БД (меняется в .env)
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # 👉 пароль БД (меняется в .env)
+
+    # 🔒 Порт проброшен ТОЛЬКО на localhost
+    # 👉 менять порт (6000) можно, если конфликтует
+    # 👉 127.0.0.1 ОБЯЗАТЕЛЕН, иначе БД будет доступна извне
+    ports:
+      - "127.0.0.1:${DB_PORT}:5432"
+
+    # 💾 Volume для хранения данных PostgreSQL
+    # 👉 имя volume (`pgdata`) МОЖНО оставлять одинаковым во всех проектах
+    # 👉 Docker автоматически сделает его уникальным:
+    #    <project_name>_pgdata
+    # 👉 УНИКАЛЬНОСТЬ определяется именем папки проекта
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+# 📦 Описание volumes
+volumes:
+  pgdata:
+    # ❗ НЕ указывай `name:` вручную
+    # ❌ name: pgdata
+    #
+    # Почему:
+    # - если задать name явно → ВСЕ проекты будут писать в один volume
+    # - без name Docker сам добавляет префикс проекта и конфликтов нет
+    #
+    # Пример:
+    # project_blog_pgdata
+    # project_shop_pgdata
