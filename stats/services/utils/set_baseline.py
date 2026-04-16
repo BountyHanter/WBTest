@@ -1,5 +1,7 @@
 from datetime import date, datetime, time
+import zoneinfo
 
+from django.conf import settings
 from django.utils import timezone
 
 from stats.models import Image
@@ -14,19 +16,21 @@ def set_baseline_point(image: Image):
 
     views, clicks, baseline_point = result
 
+    wb_tz = zoneinfo.ZoneInfo(settings.WB_TIMEZONE)
+
     if isinstance(baseline_point, datetime):
         baseline_dt = baseline_point
     elif isinstance(baseline_point, date):
         baseline_dt = datetime.combine(
             baseline_point,
             time.min,
-            tzinfo=timezone.get_current_timezone(),
+            tzinfo=wb_tz,
         )
     else:
         baseline_dt = timezone.now()
 
     if timezone.is_naive(baseline_dt):
-        baseline_dt = timezone.make_aware(baseline_dt, timezone.get_current_timezone())
+        baseline_dt = timezone.make_aware(baseline_dt, wb_tz)
 
     image.baseline_views = views
     image.baseline_clicks = clicks

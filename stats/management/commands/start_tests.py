@@ -54,7 +54,7 @@ class Command(BaseCommand):
 
                 Test.objects.filter(id__in=claimed_ids).update(is_processed=True)
 
-            workers_count = min(10, max(2, len(claimed_ids)))
+            workers_count = max(1, min(10, len(claimed_ids)))
 
             self.stdout.write(
                 f"Взято тестов: {len(claimed_ids)} | потоков: {workers_count}"

@@ -130,6 +130,20 @@ class TestEngine:
             return
         now = timezone.now()
 
+        if self.test.started_at is None:
+            updated = (
+                Test.objects
+                .filter(pk=self.test.pk, status=Test.Status.ACTIVE, started_at__isnull=True)
+                .update(started_at=now)
+            )
+            if updated:
+                self.test.started_at = now
+                logger.info(
+                    "Установлено время старта теста в менеджере | test_id=%s started_at=%s",
+                    self.test.id,
+                    now,
+                )
+
         if self.test.set_pause:
             with transaction.atomic():
                 test = (
@@ -294,10 +308,12 @@ class TestEngine:
                     return
 
                 delta_views, delta_clicks = result
+                projected_total_views = image.total_views + delta_views
                 views_limit_reached = delta_views >= test.impressions_per_cycle
                 time_limit_reached = (now - image.started_at).total_seconds() >= test.time_per_cycle
+                image_limit_reached = projected_total_views >= test.max_impressions_per_image
 
-                if not (views_limit_reached or time_limit_reached):
+                if not (views_limit_reached or time_limit_reached or image_limit_reached):
                     logger.info(
                         "Ротация не нужна | test_id=%s image_id=%s delta_views=%s elapsed=%.2f",
                         test.id,
@@ -315,7 +331,6 @@ class TestEngine:
                     delta_clicks,
                 )
 
-                projected_total_views = image.total_views + delta_views
                 eligible_images = list(
                     test.images.filter(
                         status=Image.Status.PENDING,
@@ -325,6 +340,32 @@ class TestEngine:
 
                 if projected_total_views >= test.max_impressions_per_image:
                     eligible_images = [img for img in eligible_images if img.pk != image.pk]
+
+                if len(eligible_images) == 1:
+                    close_image_session(image, delta_views, delta_clicks)
+                    image.total_views = projected_total_views
+                    image.total_clicks += delta_clicks
+                    image.rounds_passed += 1
+                    if image.total_views >= test.max_impressions_per_image:
+                        image.status = Image.Status.DONE
+                    image.save(update_fields=[
+                        "total_views",
+                        "total_clicks",
+                        "rounds_passed",
+                        "status",
+                    ])
+
+                    test.status = Test.Status.FINISHED
+                    test.current_image = None
+                    test.finished_at = now
+                    test.save(update_fields=["status", "current_image", "finished_at"])
+
+                    logger.info(
+                        "Тест завершён: для сравнения осталась 1 картинка | test_id=%s image_id=%s",
+                        test.id,
+                        eligible_images[0].id,
+                    )
+                    return
 
                 first_image = eligible_images[0] if eligible_images else None
                 next_image = None
@@ -511,7 +552,8 @@ class TestEngine:
             ).order_by("position").first()
 
             if first_image and next_image.pk == first_image.pk:
-                run_ctr(test)
+                closed_cycle = test.current_cycle
+                run_ctr(test, cycle_number=closed_cycle)
                 test.current_cycle += 1
                 test_update_fields.append("current_cycle")
                 logger.info(

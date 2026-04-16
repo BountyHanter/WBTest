@@ -38,6 +38,8 @@ def sync_campaign_daily_stats(test: Test) -> bool:
         "accept": "application/json",
     }
 
+    logger.info(f"params: {params}\n headers: {headers}")
+
     attempts = 3
 
     for attempt in range(1, attempts + 1):
