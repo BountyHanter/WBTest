@@ -1,9 +1,12 @@
 from rest_framework import serializers
+from django.db import transaction
 
-from stats.models import Test
+from stats.models import Test, Image
 
 
 class TestSerializer(serializers.ModelSerializer):
+    preview_image = serializers.SerializerMethodField()
+
     class Meta:
         model = Test
         fields = (
@@ -18,7 +21,7 @@ class TestSerializer(serializers.ModelSerializer):
             "max_impressions_per_image",
             "time_per_cycle",
 
-            "current_image",
+            "preview_image",
 
             "created_at",
             "updated_at",
@@ -26,16 +29,22 @@ class TestSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "status",
-            "current_image",
+            "preview_image",
             "created_at",
             "updated_at",
         )
 
-from rest_framework import serializers
-from django.db import transaction
+    def get_preview_image(self, obj):
+        # 1. если есть текущая
+        if obj.current_image:
+            return obj.current_image.image.url
 
-from stats.models import Test, Image
+        # 2. иначе первая по позиции
+        image = obj.images.order_by("position").first()
+        if image:
+            return image.image.url
 
+        return None
 
 class TestWithImagesSerializer(serializers.ModelSerializer):
     images = serializers.ListField(
