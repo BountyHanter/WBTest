@@ -88,7 +88,6 @@ def test_me_get_authorized(client):
     User.objects.create_user(
         email="test@example.com",
         password="123456",
-        wb_token="test_token"
     )
 
     # логинимся
@@ -109,63 +108,3 @@ def test_me_get_authorized(client):
 
     assert response.status_code == 200
     assert response.data["email"] == "test@example.com"
-    assert response.data["wb_token"] == "test_token"
-
-
-@pytest.mark.django_db
-def test_me_patch_update_token(client):
-    user = User.objects.create_user(
-        email="test@example.com",
-        password="123456",
-        wb_token=None
-    )
-
-    login_response = client.post("/api/v1/users/login/", {
-        "email": "test@example.com",
-        "password": "123456"
-    })
-
-    access = login_response.data["access"]
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
-
-    response = client.patch("/api/v1/users/me/", {
-        "wb_token": "new_token"
-    })
-
-    if pytest.DEBUG:
-        data = response.json()
-        print(json.dumps(data, ensure_ascii=False, indent=4))
-
-    assert response.status_code == 200
-
-    user.refresh_from_db()
-    assert user.wb_token == "new_token"
-
-
-@pytest.mark.django_db
-def test_me_patch_empty(client):
-    user = User.objects.create_user(
-        email="test@example.com",
-        password="123456",
-        wb_token="old_token"
-    )
-
-    login_response = client.post("/api/v1/users/login/", {
-        "email": "test@example.com",
-        "password": "123456"
-    })
-
-    access = login_response.data["access"]
-    client.credentials(HTTP_AUTHORIZATION=f"Bearer {access}")
-
-    response = client.patch("/api/v1/users/me/", {})
-
-    if pytest.DEBUG:
-        data = response.json()
-        print(json.dumps(data, ensure_ascii=False, indent=4))
-
-
-    assert response.status_code == 200
-
-    user.refresh_from_db()
-    assert user.wb_token == "old_token"

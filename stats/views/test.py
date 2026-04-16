@@ -1,3 +1,4 @@
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -5,7 +6,7 @@ from rest_framework import status
 from rest_framework.exceptions import NotFound, ValidationError
 
 from stats.models import Test
-from stats.serializers.test import TestSerializer
+from stats.serializers.test import TestSerializer, TestWithImagesSerializer
 
 
 class TestListCreateView(APIView):
@@ -68,3 +69,21 @@ class TestDetailView(APIView):
             raise ValidationError({"detail": str(e)})
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class TestCreateWithImagesView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        serializer = TestWithImagesSerializer(
+            data=request.data,
+            context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        test = serializer.save()
+
+        return Response(
+            TestSerializer(test).data,
+            status=201
+        )
