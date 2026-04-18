@@ -20,6 +20,7 @@ class TestSerializer(serializers.ModelSerializer):
             "impressions_per_cycle",
             "max_impressions_per_image",
             "time_per_cycle",
+            "set_pause",
 
             "preview_image",
 

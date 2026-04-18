@@ -40,6 +40,9 @@ class TestPauseView(BaseTestActionView):
     def post(self, request, pk):
         test = self.get_object(request, pk)
 
+        if test.set_pause:
+            return Response({"detail": "Тест будет остановлен"})
+
         if test.status != Test.Status.ACTIVE:
             raise ValidationError(
                 {"detail": "Можно поставить на паузу только active тест"}
@@ -62,6 +65,10 @@ class TestResumeView(BaseTestActionView):
             )
 
         test.status = Test.Status.ACTIVE
-        test.save(update_fields=["status"])
+        update_fields = ["status"]
+        if test.set_pause:
+            test.set_pause = False
+            update_fields.append("set_pause")
+        test.save(update_fields=update_fields)
 
         return Response({"detail": "Тест возобновлён"})

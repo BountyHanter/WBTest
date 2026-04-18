@@ -148,8 +148,8 @@ class Test(models.Model):
         return super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.status != self.Status.DRAFT:
-            raise ValidationError("Нельзя удалить тест если он не в режиме Черновик")
+        if self.status == self.Status.ACTIVE:
+            raise ValidationError("Нельзя удалить тест если он Активен")
         return super().delete(*args, **kwargs)
 
     def _register_error(self):
