@@ -272,8 +272,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"  # Каталог для collectstatic (�
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024  # 20MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 200 * 1024 * 1024  # 200MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20 * 1024 * 1024   # 20MB на файл (RAM лимит)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
