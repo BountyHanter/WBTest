@@ -148,7 +148,7 @@ class TestEngine:
             with transaction.atomic():
                 test = (
                     Test.objects
-                    .select_for_update(skip_locked=True)
+                    .select_for_update(skip_locked=True, of=("self",))
                     .select_related("current_image")
                     .filter(pk=self.test.pk)
                     .first()
