@@ -213,6 +213,12 @@ class TestEngine:
 
 
         if not sync_campaign_daily_stats(self.test):
+            logger.error(
+                "Синхронизация статистики WB вернула False | test_id=%s campaign_id=%s product_id=%s",
+                self.test.id,
+                self.test.campaign_id,
+                self.test.product_id,
+            )
             self._add_error_safe("Не удалось получить статистику WB")
             return
 

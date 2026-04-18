@@ -63,6 +63,13 @@ def sync_campaign_daily_stats(test: Test) -> bool:
             data = response.json()
 
             if not data:
+                logger.error(
+                    "Пустой ответ WB fullstats | test_id=%s campaign_id=%s params=%s status_code=%s",
+                    test.id,
+                    test.campaign_id,
+                    params,
+                    response.status_code,
+                )
                 return False
 
             days = data[0].get("days", [])
@@ -94,9 +101,15 @@ def sync_campaign_daily_stats(test: Test) -> bool:
 
             # --- today обязателен
             if today_stat is None:
-                logger.warning(
-                    "Нет данных за сегодня | test_id=%s",
+                day_dates = [day.get("date") for day in days if day.get("date")]
+                logger.error(
+                    "WB fullstats без данных за today | test_id=%s campaign_id=%s today=%s yesterday=%s parsed_days=%s raw_day_dates=%s",
                     test.id,
+                    test.campaign_id,
+                    today.isoformat(),
+                    yesterday.isoformat(),
+                    len(days),
+                    day_dates,
                 )
                 return False
 
