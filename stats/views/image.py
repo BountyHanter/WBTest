@@ -31,7 +31,11 @@ class TestImageListCreateView(BaseTestImageView):
         test = self.get_test(request, test_id)
 
         images = test.images.all()
-        serializer = ImageSerializer(images, many=True)
+        serializer = ImageSerializer(
+            images,
+            many=True,
+            context={"current_image_id": test.current_image_id},
+        )
         return Response(serializer.data)
 
     def post(self, request, test_id):
@@ -47,7 +51,10 @@ class TestImageListCreateView(BaseTestImageView):
             raise ValidationError(e.message_dict if hasattr(e, "message_dict") else e.messages)
 
         return Response(
-            ImageSerializer(image).data,
+            ImageSerializer(
+                image,
+                context={"current_image_id": image.test.current_image_id},
+            ).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -72,6 +79,7 @@ class TestImageDetailView(BaseTestImageView):
             image,
             data=request.data,
             partial=True,
+            context={"current_image_id": image.test.current_image_id},
         )
         serializer.is_valid(raise_exception=True)
 
