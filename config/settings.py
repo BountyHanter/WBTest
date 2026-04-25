@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',  # pip install djangorestframework
     "corsheaders",     # pip install django-cors-headers
+    'rest_framework_simplejwt.token_blacklist',
 
     'users.apps.UsersConfig',
     'stats.apps.StatsConfig'
@@ -282,6 +283,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
+# Срок действия кода подтверждения почты\смены пароля
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 3  # 3 дня
+
+### EMAIL
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_USE_SSL = True
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 # ==============================
 # Папка для логов

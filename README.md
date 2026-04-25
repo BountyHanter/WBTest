@@ -3,7 +3,7 @@
 ## 1. Базовая информация
 
 Базовый префикс всех ручек: `/api/v1/`.
-Пользовательские ручки находятся под `/api/v1/users/`, ручки приложения `stats` — прямо под `/api/v1/`. Также есть служебный healthcheck `/api/v1/health/` и админка `/api/v1/admin/`.
+Пользовательские ручки находятся под `/api/v1/users/` и `/api/v1/auth/`, ручки приложения `stats` — прямо под `/api/v1/`. Также есть служебный healthcheck `/api/v1/health/` и админка `/api/v1/admin/`.
 
 API использует JWT-аутентификацию. В заголовке нужно передавать:
 
@@ -23,7 +23,7 @@ YYYY-MM-DDTHH:MM:SS.ffffff+ZZZZ
 2026-04-15T17:30:00.000000+0500
 ```
 
-`access` живёт 30 минут, `refresh` — 30 дней. В присланных URL отдельной ручки для refresh-токена нет, поэтому фронту нужно либо использовать отдельную ручку, если ты её добавишь позже, либо учитывать, что сейчас она в присланной конфигурации не описана.
+`access` живёт 30 минут, `refresh` — 30 дней. Для refresh предусмотрена отдельная ручка `POST /api/v1/auth/token/refresh/`.
 
 ---
 
@@ -78,12 +78,11 @@ YYYY-MM-DDTHH:MM:SS.ffffff+ZZZZ
 
 ```json
 {
-  "refresh": "jwt_refresh_token",
-  "access": "jwt_access_token"
+  "detail": "Письмо для подтверждения отправлено на email"
 }
 ```
 
-После регистрации пользователь сразу получает пару токенов.
+После регистрации пользователь не получает JWT-токены, пока не подтвердит email.
 
 #### Возможные ошибки
 
@@ -95,9 +94,56 @@ YYYY-MM-DDTHH:MM:SS.ffffff+ZZZZ
 
 ---
 
-### 3.2 Логин
+### 3.2 Подтверждение email
 
-`POST /api/v1/users/login/`
+`GET /api/v1/users/verify-email/?user_id={id}&token={token}`
+
+Без авторизации.
+
+#### Query params
+
+* `user_id` — id пользователя
+* `token` — токен подтверждения из письма
+
+#### Response 200
+
+```json
+{
+  "detail": "Email подтверждён"
+}
+```
+
+#### Возможные ошибки
+
+Отсутствуют параметры:
+
+```json
+{
+  "detail": "user_id и token обязательны"
+}
+```
+
+Пользователь не найден:
+
+```json
+{
+  "detail": "Пользователь не найден"
+}
+```
+
+Невалидный/просроченный токен:
+
+```json
+{
+  "detail": "Неверный или устаревший токен"
+}
+```
+
+---
+
+### 3.3 Логин
+
+`POST /api/v1/auth/login/`
 
 Без авторизации.
 
@@ -121,25 +167,85 @@ YYYY-MM-DDTHH:MM:SS.ffffff+ZZZZ
 
 #### Возможные ошибки
 
-Неверный логин или пароль:
+Неверные креды:
 
 ```json
 {
-  "detail": "Неверный email или пароль"
+  "detail": "No active account found with the given credentials"
 }
 ```
 
-Пользователь не активен:
+Email не подтверждён:
 
 ```json
 {
-  "detail": "Пользователь не активен"
+  "detail": "Email не подтверждён"
 }
 ```
 
 ---
 
-### 3.3 Текущий пользователь
+### 3.4 Обновление access-токена
+
+`POST /api/v1/auth/token/refresh/`
+
+Без авторизации.
+
+#### Request
+
+```json
+{
+  "refresh": "jwt_refresh_token"
+}
+```
+
+#### Response 200
+
+```json
+{
+  "access": "new_jwt_access_token"
+}
+```
+
+---
+
+### 3.5 Выход (logout)
+
+`POST /api/v1/users/logout/`
+
+Требует JWT в заголовке (`Authorization: Bearer <access_token>`).
+
+#### Request
+
+```json
+{
+  "refresh": "jwt_refresh_token"
+}
+```
+
+#### Response 204
+
+Тело отсутствует. Переданный refresh-токен попадает в blacklist.
+
+#### Возможные ошибки
+
+```json
+{
+  "detail": "Refresh token обязателен"
+}
+```
+
+или
+
+```json
+{
+  "detail": "Неверный или просроченный токен"
+}
+```
+
+---
+
+### 3.6 Текущий пользователь
 
 `GET /api/v1/users/me/`
 
@@ -1033,16 +1139,15 @@ image = <new_file>
 1. Все ручки `stats` и `GET /users/me/` требуют JWT. Без токена доступны только:
 
    * `POST /api/v1/users/register/`
-   * `POST /api/v1/users/login/`
+   * `GET /api/v1/users/verify-email/`
+   * `POST /api/v1/auth/login/`
+   * `POST /api/v1/auth/token/refresh/`
    * `GET /api/v1/health/`
-
-2. После регистрации пользователь сразу считается залогиненным на фронте, потому что ручка `register` сразу возвращает `access` и `refresh`.
-
-3. `pause` не ставит тест в `paused` мгновенно. Она только просит систему остановить тест. Для актуального статуса нужно потом перечитать сам тест.
-
-4. Для изображений upload и patch идут через `multipart/form-data`, не через обычный JSON, если передаётся файл. 
-
-5. Как только тест ушёл из `draft`, фронт должен блокировать:
+2. После `register` пользователь не считается залогиненным: API не возвращает токены до подтверждения email.
+3. `logout` требует и `access` в заголовке, и `refresh` в body. Refresh-токен после logout инвалидируется через blacklist.
+4. `pause` не ставит тест в `paused` мгновенно. Она только просит систему остановить тест. Для актуального статуса нужно потом перечитать сам тест.
+5. Для изображений upload и patch идут через `multipart/form-data`, не через обычный JSON, если передаётся файл.
+6. Как только тест ушёл из `draft`, фронт должен блокировать:
 
    * редактирование ключевых полей теста
    * добавление изображений
@@ -1050,8 +1155,6 @@ image = <new_file>
    * удаление изображений
    * reorder изображений
    * удаление самого теста
-
-6. В присланных маршрутах нет отдельной ручки refresh токена. Если фронт планирует auto-refresh, эту ручку нужно либо добавить, либо отдельно задокументировать, если она есть, но просто не была прислана.
 
 ---
 
@@ -1061,7 +1164,10 @@ image = <new_file>
 GET    /api/v1/health/
 
 POST   /api/v1/users/register/
-POST   /api/v1/users/login/
+GET    /api/v1/users/verify-email/
+POST   /api/v1/auth/login/
+POST   /api/v1/auth/token/refresh/
+POST   /api/v1/users/logout/
 GET    /api/v1/users/me/
 
 GET    /api/v1/wb-tokens/

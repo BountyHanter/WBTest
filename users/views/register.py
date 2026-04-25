@@ -2,8 +2,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from config.utils.jwt_token import get_tokens_for_user
 from users.serializers.register import RegisterSerializer
+from users.utils.send_verification import send_verification
 
 
 class RegisterView(APIView):
@@ -15,6 +15,11 @@ class RegisterView(APIView):
 
         user = serializer.save()
 
-        tokens = get_tokens_for_user(user)
+        send_verification(user)
 
-        return Response(tokens, status=status.HTTP_201_CREATED)
+        return Response(
+            {
+                "detail": "Письмо для подтверждения отправлено на email"
+            },
+            status=status.HTTP_201_CREATED
+        )

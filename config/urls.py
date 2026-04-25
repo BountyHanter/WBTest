@@ -16,13 +16,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from config.utils.health import HealthCheckView
+from users.views.token import EmailTokenObtainPairView
 
 urlpatterns = [
     path("api/v1/health/", HealthCheckView.as_view(), name="health"),
     path("api/v1/admin/", admin.site.urls),
     path("api/v1/", include([
+        path("auth/", include([
+            path("login/", EmailTokenObtainPairView.as_view(), name="login"),
+            path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+        ])),
         path("users/", include("users.urls")),
         path("", include("stats.urls")),
     ])),

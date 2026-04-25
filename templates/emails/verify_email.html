@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Подтверждение email</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 0;">
+    <tr>
+        <td align="center">
+
+            <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+
+                <!-- HEADER -->
+                <tr>
+                    <td style="background:#111827;padding:20px;text-align:center;color:#ffffff;font-size:20px;font-weight:bold;">
+                        🚀 Splitra
+                    </td>
+                </tr>
+
+                <!-- BODY -->
+                <tr>
+                    <td style="padding:30px;">
+
+                        <h2 style="margin:0 0 15px;font-size:22px;color:#111827;">
+                            Подтвердите ваш email
+                        </h2>
+
+                        <p style="margin:0 0 20px;color:#4b5563;font-size:15px;line-height:1.6;">
+                            Спасибо за регистрацию! Чтобы начать пользоваться сервисом,
+                            подтвердите ваш email.
+                        </p>
+
+                        <!-- BUTTON -->
+                        <table cellpadding="0" cellspacing="0" style="margin:25px 0;">
+                            <tr>
+                                <td align="center">
+                                    <a href="{{ verification_link }}"
+                                       style="
+                                           display:inline-block;
+                                           padding:14px 24px;
+                                           background:#2563eb;
+                                           color:#ffffff;
+                                           text-decoration:none;
+                                           border-radius:8px;
+                                           font-weight:bold;
+                                           font-size:14px;
+                                       ">
+                                        Подтвердить email
+                                    </a>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin:20px 0 0;color:#6b7280;font-size:13px;">
+                            Если кнопка не работает, скопируйте ссылку:
+                        </p>
+
+                        <p style="word-break:break-all;font-size:12px;color:#2563eb;">
+                            {{ verification_link }}
+                        </p>
+
+                    </td>
+                </tr>
+
+                <!-- FOOTER -->
+                <tr>
+                    <td style="padding:20px;text-align:center;font-size:12px;color:#9ca3af;">
+                        Если вы не регистрировались — просто проигнорируйте это письмо.
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>
