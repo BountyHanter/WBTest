@@ -8,8 +8,37 @@ from django.core.mail import EmailMultiAlternatives, get_connection
 logger = logging.getLogger(__name__)
 
 
+def _resolve_email_timeout(default=10):
+    raw_timeout = getattr(settings, "EMAIL_TIMEOUT", default)
+
+    if raw_timeout in (None, ""):
+        logger.warning(
+            "EMAIL_TIMEOUT пустой, используется значение по умолчанию",
+            extra={"email_timeout_default": default},
+        )
+        return default
+
+    try:
+        timeout = int(raw_timeout)
+    except (TypeError, ValueError):
+        logger.warning(
+            "EMAIL_TIMEOUT невалидный, используется значение по умолчанию",
+            extra={"email_timeout_raw": raw_timeout, "email_timeout_default": default},
+        )
+        return default
+
+    if timeout <= 0:
+        logger.warning(
+            "EMAIL_TIMEOUT должен быть > 0, используется значение по умолчанию",
+            extra={"email_timeout_raw": raw_timeout, "email_timeout_default": default},
+        )
+        return default
+
+    return timeout
+
+
 def send_email(subject, to, text_content, html_content):
-    timeout = int(getattr(settings, "EMAIL_TIMEOUT", 10))
+    timeout = _resolve_email_timeout(default=10)
 
     try:
         connection = get_connection(timeout=timeout)
