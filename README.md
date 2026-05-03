@@ -83,6 +83,7 @@ YYYY-MM-DDTHH:MM:SS.ffffff+ZZZZ
 ```
 
 После регистрации пользователь не получает JWT-токены, пока не подтвердит email.
+Ссылка из письма ведёт на фронтенд: `{FRONTEND_URL}/verify-email/?user_id={id}&token={token}`.
 
 #### Возможные ошибки
 
@@ -104,6 +105,9 @@ YYYY-MM-DDTHH:MM:SS.ffffff+ZZZZ
 
 * `user_id` — id пользователя
 * `token` — токен подтверждения из письма
+
+Бэкенд-ручка подтверждения: `GET /api/v1/users/verify-email/`.
+Ссылка в email формируется как фронтенд-страница: `{FRONTEND_URL}/verify-email/?user_id={id}&token={token}`.
 
 #### Response 200
 
@@ -256,6 +260,99 @@ Email не подтверждён:
 ```json
 {
   "email": "user@example.com"
+}
+```
+
+---
+
+### 3.7 Запрос на сброс пароля
+
+`POST /api/v1/users/password-reset/`
+
+Без авторизации.
+
+Ручка всегда возвращает `200`, чтобы не раскрывать, существует ли пользователь с таким email.
+
+#### Request
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+#### Response 200
+
+```json
+{
+  "detail": "Если пользователь существует, письмо отправлено"
+}
+```
+
+Если пользователь существует, ему отправляется письмо со ссылкой:
+`{FRONTEND_URL}/password-change/?user_id={id}&token={token}`.
+
+#### Возможные ошибки валидации
+
+```json
+{
+  "email": ["Введите правильный адрес электронной почты."]
+}
+```
+
+---
+
+### 3.8 Подтверждение сброса пароля
+
+`POST /api/v1/users/password-reset-confirm/`
+
+Без авторизации.
+
+#### Request
+
+```json
+{
+  "user_id": 1,
+  "token": "reset_token",
+  "password": "newpassword"
+}
+```
+
+#### Правила
+
+* `password` минимум 6 символов
+
+#### Response 200
+
+```json
+{
+  "detail": "Пароль успешно изменён"
+}
+```
+
+#### Возможные ошибки
+
+Пользователь не найден:
+
+```json
+{
+  "detail": "Пользователь не найден"
+}
+```
+
+Невалидный/просроченный токен:
+
+```json
+{
+  "detail": "Неверный или устаревший токен"
+}
+```
+
+Ошибка валидации:
+
+```json
+{
+  "password": ["Убедитесь, что это значение содержит не менее 6 символов."]
 }
 ```
 
@@ -1137,12 +1234,9 @@ image = <new_file>
 ## 9. Что важно учесть фронту
 
 1. Все ручки `stats` и `GET /users/me/` требуют JWT. Без токена доступны только:
-
-   * `POST /api/v1/users/register/`
-   * `GET /api/v1/users/verify-email/`
-   * `POST /api/v1/auth/login/`
-   * `POST /api/v1/auth/token/refresh/`
-   * `GET /api/v1/health/`
+   `POST /api/v1/users/register/`, `GET /api/v1/users/verify-email/`, `POST /api/v1/users/password-reset/`,
+   `POST /api/v1/users/password-reset-confirm/`, `POST /api/v1/auth/login/`,
+   `POST /api/v1/auth/token/refresh/`, `GET /api/v1/health/`.
 2. После `register` пользователь не считается залогиненным: API не возвращает токены до подтверждения email.
 3. `logout` требует и `access` в заголовке, и `refresh` в body. Refresh-токен после logout инвалидируется через blacklist.
 4. `pause` не ставит тест в `paused` мгновенно. Она только просит систему остановить тест. Для актуального статуса нужно потом перечитать сам тест.
@@ -1155,6 +1249,14 @@ image = <new_file>
    * удаление изображений
    * reorder изображений
    * удаление самого теста
+7. После регистрации ссылка подтверждения ведёт на фронт:
+   `{FRONTEND_URL}/verify-email/?user_id={id}&token={token}`. Фронт-страница должна вызвать
+   `GET /api/v1/users/verify-email/` с этими query params.
+8. Для `POST /api/v1/users/password-reset/` фронт всегда получает `200` и одинаковое сообщение.
+   Не нужно пытаться определить существование email по ответу.
+9. Ссылка из письма на сброс ведёт на фронт:
+   `{FRONTEND_URL}/password-change/?user_id={id}&token={token}`. После ввода нового пароля фронт вызывает
+   `POST /api/v1/users/password-reset-confirm/`.
 
 ---
 
@@ -1165,6 +1267,8 @@ GET    /api/v1/health/
 
 POST   /api/v1/users/register/
 GET    /api/v1/users/verify-email/
+POST   /api/v1/users/password-reset/
+POST   /api/v1/users/password-reset-confirm/
 POST   /api/v1/auth/login/
 POST   /api/v1/auth/token/refresh/
 POST   /api/v1/users/logout/
@@ -1178,6 +1282,7 @@ DELETE /api/v1/wb-tokens/{id}/
 
 GET    /api/v1/tests/
 POST   /api/v1/tests/
+POST   /api/v1/tests/full
 GET    /api/v1/tests/{id}/
 PATCH  /api/v1/tests/{id}/
 DELETE /api/v1/tests/{id}/
@@ -1191,3 +1296,4 @@ POST   /api/v1/tests/{test_id}/images/
 PATCH  /api/v1/tests/{test_id}/images/{image_id}/
 DELETE /api/v1/tests/{test_id}/images/{image_id}/
 POST   /api/v1/tests/{test_id}/images/reorder/
+```
