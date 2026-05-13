@@ -2,7 +2,7 @@ from django.urls import path, include
 
 from stats.views.image import TestImageListCreateView, TestImageDetailView, TestImageReorderView
 from stats.views.test import TestListCreateView, TestDetailView, TestCreateWithImagesView
-from stats.views.test_action import TestStartView, TestPauseView, TestResumeView
+from stats.views.test_action import TestStartView, TestPauseView, TestResumeView, TestFinishView
 from stats.views.wb_token import WBTokenListCreateView, WBTokenDetailView
 
 urlpatterns = [
@@ -16,6 +16,7 @@ urlpatterns = [
         path("<int:pk>/start/", TestStartView.as_view(), name="test-start"),
         path("<int:pk>/pause/", TestPauseView.as_view(), name="test-pause"),
         path("<int:pk>/resume/", TestResumeView.as_view(), name="test-resume"),
+        path("<int:pk>/finish/", TestFinishView.as_view(), name="test-finish"),
 
         path("<int:test_id>/images/", TestImageListCreateView.as_view(), name="image-list"),
         path("<int:test_id>/images/<int:image_id>/", TestImageDetailView.as_view(), name="image-detail"),

@@ -76,6 +76,10 @@ class Test(models.Model):
         db_index=True,
         verbose_name="Номер раунда планировщика, в котором тест уже обработан",
     )
+    rotation_forward = models.BooleanField(
+        default=True,
+        verbose_name="Направление ротации"
+    )
 
     started_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата старта")
     finished_at = models.DateTimeField(null=True, blank=True, verbose_name="Дата завершения")

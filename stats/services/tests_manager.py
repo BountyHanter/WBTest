@@ -21,6 +21,29 @@ class TestEngine:
     def __init__(self, test: Test):
         self.test = test
 
+    @staticmethod
+    def _get_next_image_by_rotation(test: Test, current_image: Image, eligible_images: list[Image]):
+        current_is_eligible = any(img.pk == current_image.pk for img in eligible_images)
+        previous_images = [img for img in eligible_images if img.position < current_image.position]
+        next_images = [img for img in eligible_images if img.position > current_image.position]
+
+        if test.rotation_forward:
+            if next_images:
+                return next_images[0], True
+            if current_is_eligible:
+                return current_image, False
+            if previous_images:
+                return previous_images[-1], False
+        else:
+            if previous_images:
+                return previous_images[-1], False
+            if current_is_eligible:
+                return current_image, True
+            if next_images:
+                return next_images[0], True
+
+        return None, test.rotation_forward
+
     def _add_error_safe(self, message: str):
         with transaction.atomic():
             locked_test = (
@@ -43,7 +66,7 @@ class TestEngine:
         headers = {
             "Authorization": self.test.wb_token.token,
             "X-Nm-Id": str(self.test.product_id),
-            "X-Photo-Number": str(image.position),
+            "X-Photo-Number": '1',
         }
 
         try:
@@ -265,7 +288,10 @@ class TestEngine:
                     )
                     return
 
-                next_image = eligible_images[0] if eligible_images else None
+                if test.rotation_forward:
+                    next_image = eligible_images[0] if eligible_images else None
+                else:
+                    next_image = eligible_images[-1] if eligible_images else None
 
                 if not next_image:
                     test.status = Test.Status.FINISHED
@@ -373,11 +399,11 @@ class TestEngine:
                     )
                     return
 
-                first_image = eligible_images[0] if eligible_images else None
-                next_image = None
-                if eligible_images:
-                    after_current = [img for img in eligible_images if img.position > image.position]
-                    next_image = after_current[0] if after_current else first_image
+                next_image, next_rotation_forward = self._get_next_image_by_rotation(
+                    test=test,
+                    current_image=image,
+                    eligible_images=eligible_images,
+                )
 
                 if not next_image:
                     close_image_session(image, delta_views, delta_clicks)
@@ -400,36 +426,11 @@ class TestEngine:
                     logger.info("Тест завершён: следующей картинки нет | test_id=%s", test.id)
                     return
 
-                if next_image.pk == image.pk:
-                    close_image_session(image, delta_views, delta_clicks)
-                    image.total_views = projected_total_views
-                    image.total_clicks += delta_clicks
-                    image.rounds_passed += 1
-                    if image.total_views >= test.max_impressions_per_image:
-                        image.status = Image.Status.DONE
-                    image.save(update_fields=[
-                        "total_views",
-                        "total_clicks",
-                        "rounds_passed",
-                        "status",
-                    ])
-
-                    test.status = Test.Status.FINISHED
-                    test.current_image = None
-                    test.finished_at = now
-                    test.save(update_fields=["status", "current_image", "finished_at"])
-
-                    logger.info(
-                        "Тест завершён: для сравнения осталась 1 картинка | test_id=%s image_id=%s",
-                        test.id,
-                        image.id,
-                    )
-                    return
-
                 image_to_send = next_image
                 pending_switch = {
                     "old_image_id": image.id,
                     "next_image_id": next_image.id,
+                    "next_rotation_forward": next_rotation_forward,
                     "delta_views": delta_views,
                     "delta_clicks": delta_clicks,
                     "projected_total_views": projected_total_views,
@@ -551,13 +552,11 @@ class TestEngine:
                 "status",
             ])
 
-            test_update_fields = ["current_image"]
-            first_image = test.images.filter(
-                status=Image.Status.PENDING,
-                total_views__lt=test.max_impressions_per_image,
-            ).order_by("position").first()
+            test_update_fields = ["current_image", "rotation_forward"]
+            rotation_changed = test.rotation_forward != pending_switch["next_rotation_forward"]
+            test.rotation_forward = pending_switch["next_rotation_forward"]
 
-            if first_image and next_image.pk == first_image.pk:
+            if rotation_changed:
                 closed_cycle = test.current_cycle
                 run_ctr(test, cycle_number=closed_cycle)
                 test.current_cycle += 1
@@ -567,6 +566,8 @@ class TestEngine:
                     test.id,
                     test.current_cycle,
                 )
+
+            next_image.test = test
 
             if not set_baseline_point(next_image):
                 logger.warning(

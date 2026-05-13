@@ -178,3 +178,34 @@ def test_engine_finishes_when_only_one_eligible_image_remains(monkeypatch):
     assert test.current_image is None
     assert img3.total_views > 0
     assert not sent_images
+
+
+@pytest.mark.django_db
+def test_rotation_repeats_edge_image_when_direction_changes():
+    user = create_user(104)
+    wb_token = create_wb_token(user=user)
+    test = create_test(
+        user=user,
+        name="ping_pong_rotation",
+        wb_token=wb_token,
+    )
+
+    img1 = create_image(test, 1)
+    img2 = create_image(test, 2)
+    img3 = create_image(test, 3)
+    eligible_images = [img1, img2, img3]
+
+    current_image = img1
+    sequence = [current_image.position]
+
+    for _ in range(8):
+        next_image, next_rotation_forward = TestEngine._get_next_image_by_rotation(
+            test=test,
+            current_image=current_image,
+            eligible_images=eligible_images,
+        )
+        current_image = next_image
+        test.rotation_forward = next_rotation_forward
+        sequence.append(current_image.position)
+
+    assert sequence == [1, 2, 3, 3, 2, 1, 1, 2, 3]

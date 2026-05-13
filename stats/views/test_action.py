@@ -72,3 +72,30 @@ class TestResumeView(BaseTestActionView):
         test.save(update_fields=update_fields)
 
         return Response({"detail": "Тест возобновлён"})
+
+
+# FINISH
+class TestFinishView(BaseTestActionView):
+    def post(self, request, pk):
+        test = self.get_object(request, pk)
+
+        if test.status == Test.Status.ERROR:
+            raise ValidationError(
+                {"detail": "Нельзя завершить тест со статусом error"}
+            )
+
+        if test.status == Test.Status.FINISHED:
+            return Response({"detail": "Тест уже завершён"})
+
+        test.status = Test.Status.FINISHED
+        test.finished_at = timezone.now()
+
+        update_fields = ["status", "finished_at"]
+
+        if test.set_pause:
+            test.set_pause = False
+            update_fields.append("set_pause")
+
+        test.save(update_fields=update_fields)
+
+        return Response({"detail": "Тест завершён"})
